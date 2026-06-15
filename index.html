@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historical Figures & Educational Institutions in China (1872–1951)</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f9fb;
+      color: #1f2937;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #111827;
+      letter-spacing: 0.2px;
+    }
+    header p {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    #map {
+      flex: 1;
+      min-width: 0;
+      background: #eef2f6;
+      position: relative;
+    }
+    .sidebar {
+      width: 360px;
+      background: #ffffff;
+      border-left: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar h3 {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 16px 8px;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .person-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 10px 10px;
+    }
+    .person-item {
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .person-item:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .person-item.active {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      box-shadow: 0 0 0 2px #3b82f6;
+    }
+    .person-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #111827;
+      margin-bottom: 2px;
+    }
+    .person-meta {
+      font-size: 11px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+      margin-left: 4px;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    @media (max-width: 900px) {
+      .sidebar { width: 300px; }
+    }
+    @media (max-width: 700px) {
+      .main { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        height: 35%;
+        border-left: none;
+        border-top: 1px solid #e5e7eb;
+      }
+      #map { height: 65%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Historical Figures & Educational Institutions in China</h1>
+        <p>24 activity records · 1872–1951 · Click a person to lock their trajectory</p>
+      </div>
+    </header>
+    <div class="main">
+      <div id="map"></div>
+      <div class="sidebar">
+        <h3>Historical Figures</h3>
+        <div class="person-list" id="personList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ RAW DATA WITH PRECISE COORDINATES ============
+    const rawData = [
+      { person: "Yung Wing", relationship: "architect", institution: "Chinese Educational Mission", time: "1872–1875", province: "北京市", coords: [116.40, 39.90] },
+      { person: "Tong King-sing", relationship: "fund", institution: "Kwang Chau Public School", time: "1872–1892", province: "上海市", coords: [121.49, 31.22] },
+      { person: "Tong King-sing", relationship: "founded", institution: "Gezhi Shanghai High School", time: "1874", province: "上海市", coords: [121.48, 31.23] },
+      { person: "Tong King-sing", relationship: "served as", institution: "Gezhi Shanghai High School", time: "1874–1885", province: "上海市", coords: [121.48, 31.23] },
+      { person: "Tong King-sing", relationship: "fund", institution: "Shanghai Telegraph School", time: "1882–1892", province: "上海市", coords: [121.47, 31.24] },
+      { person: "Tong King-kwei", relationship: "served as", institution: "Gezhi Shanghai High School", time: "1877–1892", province: "上海市", coords: [121.48, 31.23] },
+      { person: "Tang Shao-yi", relationship: "served as", institution: "Shandong University", time: "1901–1902", province: "山东省", coords: [117.02, 36.65] },
+      { person: "Tang Shao-yi", relationship: "served as", institution: "Tianjin University", time: "1902–1903", province: "天津市", coords: [117.16, 39.11] },
+      { person: "Tang Shao-yi", relationship: "served as", institution: "Fudan University", time: "1913–1930", province: "上海市", coords: [121.50, 31.30] },
+      { person: "Liang Ju-hao", relationship: "served as", institution: "Tangshan Engineering College", time: "1902–1905", province: "河北省", coords: [118.18, 39.62] },
+      { person: "Liang Ju-hao", relationship: "served as", institution: "Tianjin University", time: "1907–1908", province: "天津市", coords: [117.16, 39.11] },
+      { person: "Tang Yu-heng", relationship: "founded", institution: "South China Agricultural University", time: "1909", province: "广东省", coords: [113.36, 23.16] },
+      { person: "Tang Yu-heng", relationship: "served as", institution: "South China Agricultural University", time: "1909–1912", province: "广东省", coords: [113.36, 23.16] },
+      { person: "Tong Kwo On", relationship: "served as", institution: "Tsinghua University", time: "1911–1913", province: "北京市", coords: [116.32, 40.00] },
+      { person: "Sun Yat-sen", relationship: "founded", institution: "Sun Yat-sen University", time: "1924", province: "广东省", coords: [113.30, 23.10] },
+      { person: "Sun Yat-sen", relationship: "founded", institution: "Whampoa Military Academy", time: "1924", province: "广东省", coords: [113.43, 23.07] },
+      { person: "Chung Wing-kwong", relationship: "taught at", institution: "Lingnan University", time: "1899–1908", province: "广东省", coords: [113.30, 23.10] },
+      { person: "Chung Wing-kwong", relationship: "served as", institution: "Lingnan College", time: "1909–1937", province: "广东省", coords: [113.30, 23.10] },
+      { person: "Chung Wing-kwong", relationship: "served as", institution: "Lingnan Agricultural College", time: "1921–1928", province: "广东省", coords: [113.36, 23.16] },
+      { person: "Wei Chou-min", relationship: "served as", institution: "Central China Normal University", time: "1924–1951", province: "湖北省", coords: [114.35, 30.52] },
+      { person: "Siao Yu-mei", relationship: "taught at", institution: "Peking University", time: "1920", province: "北京市", coords: [116.31, 39.99] },
+      { person: "Siao Yu-mei", relationship: "founded", institution: "Shanghai Conservatory of Music", time: "1928", province: "上海市", coords: [121.45, 31.22] },
+      { person: "Siao Yu-mei", relationship: "served as", institution: "Shanghai Conservatory of Music", time: "1928–1940", province: "上海市", coords: [121.45, 31.22] }
+    ];
+
+    function getStartYear(timeStr) {
+      const m = String(timeStr).match(/(\d{4})/);
+      return m ? parseInt(m[1]) : 0;
+    }
+
+    // ============ SCHOOL-LEVEL NODES SYSTEM ============
+    const rawInstitutionMap = {};
+    rawData.forEach(d => {
+      if (!rawInstitutionMap[d.institution]) {
+        rawInstitutionMap[d.institution] = { ...d };
+      }
+    });
+
+    const coordCollisionGroups = {};
+    Object.keys(rawInstitutionMap).forEach(instName => {
+      const coordKey = rawInstitutionMap[instName].coords.join(',');
+      if (!coordCollisionGroups[coordKey]) coordCollisionGroups[coordKey] = [];
+      coordCollisionGroups[coordKey].push({
+        name: instName,
+        data: rawInstitutionMap[instName],
+        originalCoords: [...rawInstitutionMap[instName].coords]
+      });
+    });
+
+    const OFFSET_DISTANCE = 0.03;
+    const finalInstitutionMap = {};
+
+    Object.values(coordCollisionGroups).forEach(group => {
+      if (group.length === 1) {
+        const school = group[0];
+        finalInstitutionMap[school.name] = {
+          ...school.data,
+          coords: [...school.originalCoords],
+          wasOffset: false
+        };
+      } else {
+        group.forEach((school, idx) => {
+          const row = Math.floor(Math.sqrt(idx));
+          const col = idx - (row * row);
+          const offsetCoords = [
+            school.originalCoords[0] + col * OFFSET_DISTANCE,
+            school.originalCoords[1] - row * OFFSET_DISTANCE
+          ];
+          finalInstitutionMap[school.name] = {
+            ...school.data,
+            coords: offsetCoords,
+            originalCoords: school.originalCoords,
+            wasOffset: true,
+            offsetIndex: idx
+          };
+        });
+      }
+    });
+
+    const allSchoolNodes = Object.values(finalInstitutionMap);
+
+    const provinceStats = {};
+    rawData.forEach(d => {
+      provinceStats[d.province] = (provinceStats[d.province] || 0) + 1;
+    });
+    const mapData = Object.entries(provinceStats).map(([name, value]) => ({ name, value }));
+    const maxValue = Math.max(...mapData.map(d => d.value));
+
+    const personMap = {};
+    rawData.forEach(d => {
+      if (!personMap[d.person]) personMap[d.person] = [];
+      const schoolNode = allSchoolNodes.find(s => s.institution === d.institution);
+      const finalCoords = schoolNode ? schoolNode.coords : d.coords;
+      personMap[d.person].push({
+        ...d,
+        startYear: getStartYear(d.time),
+        coords: finalCoords
+      });
+    });
+    Object.values(personMap).forEach(arr => arr.sort((a, b) => a.startYear - b.startYear));
+
+    function buildProvinceTooltip(provinceName) {
+      const items = rawData.filter(d => d.province === provinceName);
+      const list = items.map(d =>
+        `<div style="margin:4px 0;padding:4px 0;border-bottom:1px solid #f3f4f6;">
+          <strong>${d.person}</strong> <span style="color:#6b7280;font-size:12px;">${d.time}</span><br/>
+          <span style="color:#374151;">${d.relationship}</span> — ${d.institution}
+        </div>`
+      ).join('');
+      return `<div style="max-width:320px;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px;border-bottom:1px solid #e5e7eb;padding-bottom:4px;">${provinceName} <span style="color:#6b7280;font-weight:400;">(${items.length} records)</span></div>
+        ${list}
+      </div>`;
+    }
+
+    // ============ MAIN MAP ============
+    const chartDom = document.getElementById('map');
+    const mainChart = echarts.init(chartDom);
+    let currentGeoState = { zoom: 1.2, center: undefined };
+
+    function captureGeoState() {
+      const opt = mainChart.getOption();
+      if (opt.geo && opt.geo[0]) {
+        currentGeoState.zoom = opt.geo[0].zoom || currentGeoState.zoom;
+        currentGeoState.center = opt.geo[0].center || currentGeoState.center;
+      }
+    }
+    mainChart.on('georoam', captureGeoState);
+    chartDom.addEventListener('wheel', (e) => e.stopPropagation());
+
+    function getMainOption(highlightPerson = null) {
+      const linesSeries = [];
+      const relatedSchools = new Set();
+
+      if (highlightPerson && personMap[highlightPerson]) {
+        const recs = personMap[highlightPerson];
+        const schoolTrajectory = [];
+        recs.forEach(r => {
+          if (schoolTrajectory.length === 0 || schoolTrajectory[schoolTrajectory.length - 1].institution !== r.institution) {
+            schoolTrajectory.push(r);
+          }
+        });
+        if (schoolTrajectory.length > 1) {
+          for (let i = 0; i < schoolTrajectory.length - 1; i++) {
+            linesSeries.push({
+              coords: [schoolTrajectory[i].coords, schoolTrajectory[i+1].coords],
+              lineStyle: { color: '#e11d48', width: 3, curveness: 0.2 }
+            });
+          }
+        }
+        schoolTrajectory.forEach(s => relatedSchools.add(s.institution));
+      }
+
+      const schoolScatterData = allSchoolNodes.map(school => {
+        const isRelated = highlightPerson && relatedSchools.has(school.institution);
+        const activityCount = rawData.filter(d => d.institution === school.institution).length;
+        return {
+          name: school.institution,
+          value: [...school.coords, activityCount],
+          itemStyle: {
+            color: isRelated ? '#e11d48' : '#1e40af',
+            shadowBlur: isRelated ? 10 : 6,
+            shadowColor: isRelated ? '#e11d48' : 'rgba(30,64,175,0.3)'
+          },
+          label: {
+            show: isRelated,
+            formatter: '{b}',
+            position: 'top',
+            fontSize: 11,
+            fontWeight: 'bold',
+            color: '#9f1239',
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            padding: [2, 5],
+            borderRadius: 3
+          }
+        };
+      });
+
+      return {
+        backgroundColor: '#eef2f6',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(255,255,255,0.96)',
+          borderColor: '#e5e7eb',
+          borderWidth: 1,
+          textStyle: { color: '#1f2937', fontSize: 12 },
+          padding: [10, 14],
+          extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 340px;',
+          formatter: function(params) {
+            if (params.seriesType === 'map') return buildProvinceTooltip(params.name);
+            if (params.seriesType === 'effectScatter' || params.seriesType === 'scatter') {
+              const schoolName = params.data.name || params.name;
+              const items = rawData.filter(d => d.institution === schoolName);
+              if (items.length > 0) {
+                const schoolInfo = items[0];
+                const details = items.map(d =>
+                  `<div style="margin:3px 0;padding:2px 0;font-size:11.5px;border-bottom:1px solid #f3f4f6;">
+                    <strong>${d.person}</strong> <span style="color:#6b7280;">${d.time}</span><br/>
+                    <span style="color:#374151;">${d.relationship}</span>
+                  </div>`
+                ).join('');
+                return `<div>
+                  <div style="font-weight:600;font-size:13px;margin-bottom:5px;padding-bottom:4px;border-bottom:2px solid #e5e7eb;color:#111827;">🏫 ${schoolName}</div>
+                  <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${schoolInfo.province} · ${items.length} record${items.length>1?'s':''}</div>
+                  ${details}
+                </div>`;
+              }
+            }
+            if (params.seriesType === 'lines') {
+              return `<div style="font-weight:600;color:#e11d48;">✦ ${highlightPerson}'s School Trajectory</div>`;
+            }
+            return params.name;
+          }
+        },
+        geo: {
+          map: 'china',
+          roam: true,
+          zoom: currentGeoState.zoom,
+          center: currentGeoState.center,
+          label: { show: true, color: '#374151', fontSize: 11 },
+          itemStyle: { areaColor: '#dbeafe', borderColor: '#93c5fd', borderWidth: 1 },
+          emphasis: { label: { show: true, color: '#1e3a8a' }, itemStyle: { areaColor: '#bfdbfe' } }
+        },
+        visualMap: {
+          min: 0,
+          max: maxValue,
+          left: 24,
+          bottom: 24,
+          text: ['High', 'Low'],
+          calculable: true,
+          inRange: { color: ['#dbeafe', '#93c5fd', '#3b82f6', '#1e40af'] },
+          textStyle: { color: '#4b5563' }
+        },
+        series: [
+          { name: 'Activity Density', type: 'map', geoIndex: 0, data: mapData },
+          {
+            name: 'Educational Institutions',
+            type: 'effectScatter',
+            coordinateSystem: 'geo',
+            data: schoolScatterData,
+            symbolSize: function(val) {
+              const count = val[2];
+              return Math.max(12, Math.min(30, 10 + count * 3));
+            },
+            showEffectOn: 'render',
+            rippleEffect: {
+              brushType: 'stroke',
+              scale: 3.5,
+              period: 4
+            },
+            emphasis: {
+              scale: true,
+              itemStyle: {
+                color: '#e11d48',
+                shadowBlur: 15,
+                shadowColor: 'rgba(225,29,72,0.5)',
+                borderColor: '#fff',
+                borderWidth: 2
+              }
+            }
+          },
+          {
+            name: 'School Trajectory',
+            type: 'lines',
+            coordinateSystem: 'geo',
+            zlevel: 2,
+            effect: {
+              show: true,
+              period: 4,
+              trailLength: 0.5,
+              color: '#e11d48',
+              symbol: 'arrow',
+              symbolSize: 8
+            },
+            lineStyle: {
+              color: '#e11d48',
+              width: 3,
+              opacity: 0.85,
+              curveness: 0.2
+            },
+            data: linesSeries
+          }
+        ]
+      };
+    }
+
+    // ============ LOAD MAP & INIT (Multiple fallback CDNs) ============
+    const MAP_URLS = [
+      'https://cdn.jsdelivr.net/npm/echarts@5.4.3/map/json/china.json',
+      'https://unpkg.com/echarts@5.4.3/map/json/china.json',
+      'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json'
+    ];
+
+    async function loadMap() {
+      for (const url of MAP_URLS) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const geoJson = await res.json();
+          echarts.registerMap('china', geoJson);
+          mainChart.setOption(getMainOption());
+          const initOpt = mainChart.getOption();
+          if (initOpt.geo && initOpt.geo[0]) {
+            currentGeoState.zoom = initOpt.geo[0].zoom || 1.2;
+            currentGeoState.center = initOpt.geo[0].center;
+          }
+          console.log('Map loaded from:', url);
+          return;
+        } catch (e) {
+          console.warn('Failed to load map from ' + url + ':', e);
+        }
+      }
+      chartDom.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:14px;padding:20px;text-align:center;">Failed to load map data.<br/>All sources failed. Please check your network connection.</div>';
+    }
+    loadMap();
+
+    // ============ SIDEBAR INTERACTIONS ============
+    const personListEl = document.getElementById('personList');
+    const persons = Object.keys(personMap).sort();
+    let lockedPerson = null;
+
+    function updateAllCharts(person) {
+      document.querySelectorAll('.person-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.person === (lockedPerson || person));
+      });
+      mainChart.setOption(getMainOption(lockedPerson || person));
+    }
+
+    persons.forEach(person => {
+      const recs = personMap[person];
+      const provinces = [...new Set(recs.map(r => r.province))];
+      const years = recs.map(r => r.startYear).filter(y => y > 0);
+      const timeRange = years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '';
+      const hasTrajectory = provinces.length > 1;
+
+      const div = document.createElement('div');
+      div.className = 'person-item';
+      div.dataset.person = person;
+      div.innerHTML = `
+        <div class="person-name">${person} ${hasTrajectory ? '<span class="badge">Trajectory</span>' : ''}</div>
+        <div class="person-meta">${timeRange} · ${provinces.length} province${provinces.length > 1 ? 's' : ''} · ${recs.length} record${recs.length > 1 ? 's' : ''}</div>
+      `;
+
+      div.addEventListener('mouseenter', () => {
+        updateAllCharts(person);
+      });
+
+      div.addEventListener('mouseleave', () => {
+        updateAllCharts(lockedPerson);
+      });
+
+      div.addEventListener('click', () => {
+        if (lockedPerson === person) {
+          lockedPerson = null;
+        } else {
+          lockedPerson = person;
+        }
+        updateAllCharts(lockedPerson);
+      });
+
+      personListEl.appendChild(div);
+    });
+
+    window.addEventListener('resize', () => {
+      mainChart.resize();
+    });
+  </script>
+</body>
+</html>
