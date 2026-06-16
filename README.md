@@ -1,6 +1,6 @@
 # Historical Figures & Educational Institutions in China (1872?951)
 
-# 中国教育人物与机构分布图（1872?951）
+# 中国教育人物与机构分布图（1872--1951）
 
 ---
 
